@@ -1,0 +1,1270 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0b4f6c">
+<title>Toca da Tilápia · Chamar Garçom</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230b4f6c'/%3E%3Cpath d='M14 44h36' stroke='%23fff' stroke-width='4' stroke-linecap='round'/%3E%3Cpath d='M18 40a14 14 0 0 1 28 0z' fill='%23fbbf24'/%3E%3Ccircle cx='32' cy='23' r='3' fill='%23fbbf24'/%3E%3C/svg%3E">
+<!--
+  CHAMAR GARÇOM — versão local de teste (arquivo único)
+  ------------------------------------------------------
+  • Não precisa de Node, servidor nem Firebase: abra este arquivo no navegador.
+  • Os dados ficam no próprio navegador (localStorage + IndexedDB).
+  • Abas/janelas do MESMO navegador conversam em tempo real (evento "storage").
+  • Endereços:
+      chamar-garcom.html              → início
+      chamar-garcom.html#admin        → central do caixa
+      chamar-garcom.html#mesa=TOKEN   → página do cliente
+      chamar-garcom.html#teste        → central + celular lado a lado
+  • Limitação: um celular de verdade NÃO enxerga estes dados (eles só existem
+    neste navegador). Para celulares reais use a versão com Firebase.
+-->
+<style>
+:root{
+  --font: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --bg:#f4f5f7; --surface:#fff; --surface-2:#f8fafc; --border:#e3e6eb;
+  --text:#111827; --text-2:#4b5563; --text-3:#8a94a3;
+  --brand:#0b4f6c; --brand-2:#0e6b8f; --brand-3:#3aa0c4;
+  --green:#16a34a; --green-soft:#dcfce7; --green-ink:#14532d;
+  --amber:#f59e0b; --amber-soft:#fef3c7; --amber-ink:#78350f;
+  --gray:#9ca3af; --gray-soft:#f1f3f5;
+  --red:#dc2626; --red-soft:#fee2e2; --red-ink:#7f1d1d;
+  --radius:14px; --radius-sm:10px;
+  --shadow:0 1px 2px rgb(16 24 40/6%),0 1px 3px rgb(16 24 40/8%);
+  --shadow-lg:0 12px 32px rgb(16 24 40/12%);
+}
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{font-family:var(--font);background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased;line-height:1.45}
+button,input,select{font:inherit}
+button{cursor:pointer}
+a{color:inherit}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1px solid var(--border);background:var(--surface);color:var(--text);padding:9px 16px;border-radius:var(--radius-sm);font-weight:600;font-size:14px;transition:background .15s,border-color .15s,transform .05s;text-decoration:none;white-space:nowrap}
+.btn:hover:not(:disabled){background:var(--surface-2);border-color:#cfd4dc}
+.btn:active:not(:disabled){transform:translateY(1px)}
+.btn:disabled{opacity:.55;cursor:not-allowed}
+.btn-primary{background:var(--brand);border-color:var(--brand);color:#fff}
+.btn-primary:hover:not(:disabled){background:var(--brand-2);border-color:var(--brand-2)}
+.btn-danger{color:var(--red)}
+.btn-danger:hover:not(:disabled){background:var(--red-soft);border-color:#fca5a5}
+.btn-sm{padding:6px 11px;font-size:13px}
+.btn-ghost{border-color:transparent;background:transparent}
+.input{width:100%;border:1px solid var(--border);background:var(--surface);border-radius:var(--radius-sm);padding:9px 12px;color:var(--text);outline:none}
+.input:focus{border-color:var(--brand-2);box-shadow:0 0 0 3px color-mix(in srgb,var(--brand-2) 18%,transparent)}
+.muted{color:var(--text-2);margin:0;font-size:14px}
+.small{font-size:13px}
+code{background:var(--gray-soft);padding:2px 6px;border-radius:6px;font-size:12.5px}
+
+/* ---------- Início ---------- */
+.home{min-height:100vh;display:grid;place-items:center;padding:24px;
+  background:radial-gradient(1200px 600px at 10% -10%,color-mix(in srgb,var(--brand-3) 22%,#fff) 0%,transparent 60%),radial-gradient(900px 500px at 110% 110%,#fdf3d7 0%,transparent 55%),var(--bg)}
+.home-card{width:100%;max-width:520px;background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:36px 32px;box-shadow:var(--shadow-lg);text-align:center}
+.home-card h1{margin:14px 0 4px;font-size:28px;letter-spacing:-.02em}
+.home-card .tag{display:inline-block;background:var(--amber-soft);color:var(--amber-ink);font-size:12px;font-weight:700;padding:3px 10px;border-radius:999px;letter-spacing:.04em}
+.home-actions{display:grid;gap:10px;margin:26px 0 18px}
+.home-actions .btn{padding:14px;font-size:15px}
+.home-steps{text-align:left;background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:14px 18px;font-size:14px;color:var(--text-2)}
+.home-steps ol{margin:6px 0 0;padding-left:20px}
+.home-steps li{margin:4px 0}
+
+/* ---------- Login ---------- */
+.login-card{width:100%;max-width:400px;background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:40px 34px;text-align:center;box-shadow:var(--shadow-lg)}
+.login-card h1{margin:18px 0 2px;font-size:26px}
+.login-card p{margin:0 0 26px;color:var(--text-2)}
+.login-card .btn{width:100%;padding:13px;font-size:15px}
+.login-note{margin-top:14px!important;font-size:13px;color:var(--text-3)!important}
+
+/* ---------- Layout central ---------- */
+.layout{display:grid;grid-template-columns:240px 1fr;min-height:100vh}
+.sidebar{background:#0f172a;color:#cbd5e1;display:flex;flex-direction:column;padding:20px 14px;position:sticky;top:0;height:100vh}
+.brand{display:flex;gap:12px;align-items:center;padding:0 8px 20px;border-bottom:1px solid rgb(255 255 255/8%);margin-bottom:14px}
+.brand strong{display:block;color:#fff;font-size:15px}
+.brand span{display:block;font-size:12px;color:#94a3b8;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sidebar nav{display:flex;flex-direction:column;gap:2px;flex:1}
+.sidebar nav button{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;color:#cbd5e1;background:transparent;border:0;font-weight:500;font-size:14px;text-align:left}
+.sidebar nav button:hover{background:rgb(255 255 255/6%);color:#fff}
+.sidebar nav button.active{background:rgb(255 255 255/10%);color:#fff}
+.nav-badge{margin-left:auto;font-style:normal;background:var(--amber);color:#111;font-size:12px;font-weight:700;border-radius:999px;padding:1px 8px;animation:badge 1.2s ease-in-out infinite}
+@keyframes badge{50%{transform:scale(1.12)}}
+.sidebar-foot{border-top:1px solid rgb(255 255 255/8%);padding-top:12px;display:grid;gap:6px}
+.sidebar-foot button{color:#cbd5e1;justify-content:flex-start;background:transparent;border:0}
+.sidebar-foot button:hover{background:rgb(255 255 255/6%)!important;color:#fff}
+.local-tag{font-size:11px;color:#fcd34d;padding:0 12px;letter-spacing:.04em}
+.main{padding:28px 34px 60px;min-width:0}
+.page-header{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;margin-bottom:22px;flex-wrap:wrap}
+.page-header h1{margin:0;font-size:26px;letter-spacing:-.02em}
+.page-header p{margin:4px 0 0;color:var(--text-2);font-size:14px}
+.page-actions{display:flex;gap:8px;flex-wrap:wrap}
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px;margin-bottom:18px}
+.panel h3{margin:0 0 4px;font-size:16px}
+
+/* Painel */
+.system-status{display:flex;align-items:center;gap:12px;padding:14px 18px;border-radius:var(--radius);margin-bottom:18px;border:1px solid;flex-wrap:wrap}
+.system-status.on{background:var(--green-soft);border-color:#bbf7d0;color:var(--green-ink)}
+.system-status.off{background:var(--red-soft);border-color:#fecaca;color:var(--red-ink)}
+.system-status strong{letter-spacing:.04em}
+.system-status .sub{font-size:14px;opacity:.85;flex:1}
+.pulse{width:10px;height:10px;border-radius:50%}
+.on .pulse{background:var(--green);animation:ping 1.8s infinite}
+.off .pulse{background:var(--red)}
+@keyframes ping{0%{box-shadow:0 0 0 0 rgb(22 163 74/50%)}80%,100%{box-shadow:0 0 0 10px rgb(22 163 74/0%)}}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px}
+.stats-6{grid-template-columns:repeat(6,1fr)}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:4px}
+.stat span{font-size:13px;color:var(--text-2)}
+.stat strong{font-size:26px;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.stat-amber{border-color:#fcd34d;background:var(--amber-soft)}
+.stat-amber strong{color:var(--amber-ink)}
+.stat-green strong{color:var(--green)}
+.tgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px}
+.tcard{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px 16px 18px;min-height:186px;display:flex;flex-direction:column;box-shadow:var(--shadow);transition:all .2s}
+.tcard-top{display:flex;justify-content:space-between;align-items:center}
+.tcard-label{font-size:12px;letter-spacing:.14em;color:var(--text-3);font-weight:700}
+.tcard-number{font-size:46px;font-weight:800;letter-spacing:-.03em;line-height:1.05;margin:4px 0 8px;font-variant-numeric:tabular-nums}
+.tcard-status{font-weight:600;color:var(--text-2);font-size:14px}
+.tcard-time{font-size:13px;color:var(--text-3);margin-top:2px;font-variant-numeric:tabular-nums}
+.tcard-alert{font-weight:800;font-size:13px;letter-spacing:.04em}
+.tcard-btn{width:100%;padding:12px;margin-top:auto;background:#111827;color:#fff;border-color:#111827;font-size:15px;letter-spacing:.04em}
+.tcard-btn:hover:not(:disabled){background:#000!important;border-color:#000!important}
+.tcard .btn-sm{margin-top:auto;align-self:flex-start}
+.tcard-pending{background:var(--amber-soft);border:2px solid var(--amber);color:var(--amber-ink);box-shadow:0 0 0 4px rgb(245 158 11/18%),var(--shadow-lg);animation:attention 1.6s ease-in-out infinite}
+.tcard-pending .tcard-label,.tcard-pending .tcard-time{color:var(--amber-ink);opacity:.85}
+.tcard-pending .tcard-btn{margin-top:14px}
+@keyframes attention{50%{box-shadow:0 0 0 10px rgb(245 158 11/8%),var(--shadow-lg)}}
+.tcard-viewed{background:var(--green-soft);border-color:#86efac}
+.tcard-viewed .tcard-status{color:var(--green-ink)}
+.tcard-viewed .btn-sm{margin-top:14px}
+.tcard-off{background:var(--gray-soft);border-style:dashed;opacity:.75}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%}
+.dot-free{background:var(--gray)} .dot-pending{background:var(--amber)} .dot-viewed{background:var(--green)} .dot-off{border:2px solid var(--gray)}
+.legend{display:flex;gap:18px;margin-top:22px;color:var(--text-2);font-size:13px;flex-wrap:wrap}
+.legend span{display:inline-flex;gap:6px;align-items:center}
+.empty{display:grid;place-items:center;gap:8px;text-align:center;padding:44px 20px;color:var(--text-2)}
+.empty h3{margin:0;color:var(--text)}
+.empty p{margin:0 0 8px}
+
+/* Mesas */
+.add-panel{display:flex;gap:20px;align-items:flex-end;flex-wrap:wrap}
+.inline-form{display:flex;gap:10px;align-items:flex-end}
+.field{display:grid;gap:6px;min-width:190px}
+.field.sm{min-width:0;width:110px}
+.field>span{font-size:13px;color:var(--text-2);font-weight:500}
+.table-wrap{padding:0;overflow-x:auto}
+table.data{width:100%;border-collapse:collapse;font-size:14px}
+table.data th{text-align:left;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text-3);padding:12px 18px;background:var(--surface-2);border-bottom:1px solid var(--border)}
+table.data td{padding:11px 18px;border-bottom:1px solid var(--border);vertical-align:middle}
+table.data tbody tr:last-child td{border-bottom:0}
+.row-off td{opacity:.6}
+.mesa-num{font-size:18px;font-variant-numeric:tabular-nums}
+.row-actions{display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap}
+.switch{display:inline-flex;align-items:center;gap:10px;cursor:pointer;user-select:none}
+.switch input{display:none}
+.switch span{width:38px;height:22px;border-radius:999px;background:#d1d5db;position:relative;transition:background .2s;flex-shrink:0}
+.switch span::after{content:'';position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgb(0 0 0/25%);transition:transform .2s}
+.switch input:checked+span{background:var(--green)}
+.switch input:checked+span::after{transform:translateX(16px)}
+.switch em{font-style:normal;font-size:13px;color:var(--text-2)}
+.switch-lg span{width:54px;height:30px}
+.switch-lg span::after{width:24px;height:24px}
+.switch-lg input:checked+span::after{transform:translateX(24px)}
+.switch-lg em{font-weight:800;font-size:15px;width:36px}
+.switch-lg em.on{color:var(--green)} .switch-lg em.off{color:var(--red)}
+
+/* Cardápio */
+.menu-current{display:flex;align-items:center;gap:14px;padding:14px;margin:12px 0 18px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface-2)}
+.pdf-icon{width:44px;height:52px;border-radius:6px;background:var(--red);color:#fff;display:grid;place-items:center;font-weight:800;font-size:13px;flex-shrink:0}
+.menu-meta{flex:1;min-width:0}
+.menu-meta strong,.menu-meta span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.menu-meta span{font-size:13px;color:var(--text-3)}
+.upload-box{display:flex;align-items:center;gap:12px;padding:16px;border:2px dashed var(--border);border-radius:var(--radius-sm);flex-wrap:wrap}
+.upload-name{flex:1;color:var(--text-2);font-size:14px;min-width:160px}
+
+/* Relatórios */
+.filters{display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap}
+.segmented{display:inline-flex;background:var(--gray-soft);border-radius:10px;padding:3px;gap:2px;flex-wrap:wrap}
+.segmented button{border:0;background:transparent;padding:7px 14px;border-radius:8px;font-weight:600;font-size:13px;color:var(--text-2)}
+.segmented button.active{background:var(--surface);color:var(--text);box-shadow:var(--shadow)}
+.pill{display:inline-block;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600;background:var(--gray-soft);color:var(--text-2)}
+.pill-PENDING{background:var(--amber-soft);color:var(--amber-ink)}
+.pill-VIEWED{background:var(--green-soft);color:var(--green-ink)}
+
+/* Configurações */
+.settings-grid{display:grid;gap:14px;max-width:820px}
+.setting{display:flex;justify-content:space-between;align-items:center;gap:24px;margin:0}
+.setting-col{flex-direction:column;align-items:stretch;gap:14px}
+.row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+
+/* Modal / toast */
+.modal-backdrop{position:fixed;inset:0;background:rgb(15 23 42/45%);display:grid;place-items:center;padding:20px;z-index:50}
+.modal{width:100%;max-width:440px;background:var(--surface);border-radius:18px;box-shadow:var(--shadow-lg);overflow:hidden;max-height:calc(100vh - 40px);display:flex;flex-direction:column}
+.modal-wide{max-width:900px;height:calc(100vh - 40px)}
+.modal header{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid var(--border)}
+.modal h2{margin:0;font-size:17px}
+.modal-body{padding:18px;overflow:auto;flex:1}
+.modal footer{display:flex;justify-content:flex-end;gap:10px;padding:12px 18px;border-top:1px solid var(--border);background:var(--surface-2)}
+.qr-box{display:grid;place-items:center;min-height:260px}
+.qr-box img{width:100%;max-width:280px;border:1px solid var(--border);border-radius:10px}
+.qr-url{font-size:12px;color:var(--text-2);word-break:break-all;text-align:center;margin:12px 0 0}
+.pdf-frame{width:100%;height:100%;border:0;border-radius:8px;background:#eee}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);padding:12px 20px;border-radius:12px;font-weight:600;font-size:14px;box-shadow:var(--shadow-lg);z-index:100;background:#111827;color:#fff;max-width:calc(100vw - 32px)}
+.toast.error{background:var(--red)}
+
+/* ---------- Página do cliente ---------- */
+.c-shell{min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;max-width:520px;margin:0 auto;background:#f3f4f1}
+.c-message{margin:auto 24px;background:#fff;border-radius:20px;padding:32px 26px;text-align:center;box-shadow:var(--shadow)}
+.c-message h1{margin:0 0 8px;font-size:22px}
+.c-message p{margin:0;color:var(--text-2)}
+.c-header{background:var(--brand);color:#fff;text-align:center;padding:calc(22px + env(safe-area-inset-top)) 20px 30px;border-radius:0 0 28px 28px;position:relative}
+.c-header::after{content:'';position:absolute;left:50%;bottom:0;width:64px;height:4px;background:#fbbf24;border-radius:4px 4px 0 0;transform:translateX(-50%)}
+.c-brand{display:block;font-size:13px;font-weight:600;color:rgb(255 255 255/80%);margin-bottom:6px}
+.c-header h1{margin:0;font-size:15px;letter-spacing:.22em;font-weight:700;color:rgb(255 255 255/88%)}
+.c-table{font-size:22px;margin-top:6px}
+.c-table strong{font-size:44px;font-weight:800;margin-left:4px;vertical-align:-4px}
+.c-main{flex:1;display:flex;flex-direction:column;align-items:center;gap:16px;padding:26px 22px 20px}
+.c-call{width:min(72vw,270px);aspect-ratio:1;border-radius:50%;border:0;background:radial-gradient(circle at 30% 25%,var(--brand-3) 0%,var(--brand-2) 45%,var(--brand) 100%);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;font-size:21px;font-weight:800;letter-spacing:.04em;box-shadow:0 0 0 10px color-mix(in srgb,var(--brand) 10%,transparent),0 0 0 22px color-mix(in srgb,var(--brand) 5%,transparent),0 18px 30px color-mix(in srgb,var(--brand) 35%,transparent);transition:transform .12s;-webkit-tap-highlight-color:transparent;margin:12px 0 6px}
+.c-call svg{color:#fbbf24}
+.c-call:active:not(:disabled){transform:scale(.96)}
+.c-call:disabled{background:#c5c9c4;box-shadow:0 0 0 10px rgb(0 0 0/3%);cursor:not-allowed}
+.c-call:disabled svg{color:#f3f4f1}
+.c-call.compact{width:100%;aspect-ratio:auto;border-radius:18px;flex-direction:row;padding:18px;font-size:18px;margin:0;box-shadow:var(--shadow)}
+.c-call.compact:disabled{box-shadow:none}
+.c-status{width:100%;border-radius:22px;padding:24px 20px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:6px;animation:pop .35s cubic-bezier(.2,1.4,.4,1)}
+@keyframes pop{from{transform:scale(.92);opacity:0}}
+.c-status strong{font-size:23px}
+.c-status span{font-size:17px}
+.c-status-pending{background:var(--amber-soft);border:2px solid var(--amber);color:var(--amber-ink)}
+.c-status-viewed{background:var(--green);color:#fff;box-shadow:0 14px 30px rgb(22 163 74/35%)}
+.c-check{width:70px;height:70px;border-radius:50%;background:#fff;color:var(--green);display:grid;place-items:center;font-size:40px;font-weight:900;margin-bottom:8px}
+.c-ring{width:62px;height:62px;border-radius:50%;background:var(--amber);color:#fff;display:grid;place-items:center;margin-bottom:8px;animation:ring 1.4s ease-in-out infinite}
+@keyframes ring{0%,100%{box-shadow:0 0 0 0 rgb(245 158 11/45%)}60%{box-shadow:0 0 0 16px rgb(245 158 11/0%)}}
+.c-cooldown{margin:0;color:var(--text-2);font-size:15px;text-align:center}
+.c-cooldown strong{font-variant-numeric:tabular-nums;color:var(--text)}
+.c-alert{width:100%;background:var(--red-soft);color:var(--red-ink);border:1px solid #fecaca;border-radius:14px;padding:14px 16px;text-align:center;font-weight:600}
+.c-menu{margin-top:auto;width:100%;display:flex;align-items:center;justify-content:center;gap:10px;padding:17px;border-radius:16px;background:#fff;border:2px solid #d7dbd5;color:var(--text);font-weight:700;font-size:17px;letter-spacing:.03em}
+.c-menu:disabled{color:var(--text-3);cursor:not-allowed}
+.c-footer{text-align:center;font-size:12px;color:var(--text-3);padding:6px 0 calc(14px + env(safe-area-inset-bottom))}
+
+/* ---------- Modo teste (lado a lado) ---------- */
+.test-layout{display:grid;grid-template-columns:1fr 420px;min-height:100vh}
+.test-layout .layout{min-height:100vh}
+.test-side{background:#e5e7eb;border-left:1px solid var(--border);padding:16px;display:flex;flex-direction:column;align-items:center;gap:12px;position:sticky;top:0;height:100vh}
+.test-side .row{width:100%;justify-content:center}
+.test-side select{max-width:200px}
+.phone{width:360px;flex:1;max-height:740px;border-radius:36px;border:10px solid #111827;overflow:hidden;background:#f3f4f1;box-shadow:var(--shadow-lg);position:relative}
+.phone-scroll{height:100%;overflow:auto}
+.phone .c-shell{min-height:100%}
+.phone .c-call{width:230px}
+.test-hint{font-size:12px;color:var(--text-2);text-align:center;margin:0}
+
+@media (max-width:1250px){.test-layout{grid-template-columns:1fr 390px}.stats-6{grid-template-columns:repeat(3,1fr)}}
+@media (max-width:860px){
+  .layout{grid-template-columns:1fr}
+  .sidebar{height:auto;flex-direction:row;align-items:center;padding:10px;z-index:20;gap:8px}
+  .brand{border:0;margin:0;padding:0}.brand div{display:none}
+  .sidebar nav{flex-direction:row;overflow-x:auto}.sidebar nav button .lbl{display:none}
+  .sidebar-foot{border:0;padding:0}.local-tag{display:none}
+  .main{padding:20px 16px 50px}
+  .stats,.stats-6{grid-template-columns:repeat(2,1fr)}
+  .test-layout{grid-template-columns:1fr}
+  .test-side{position:static;height:auto}
+  .setting{flex-direction:column;align-items:flex-start}
+}
+@media print{.sidebar,.page-actions,.no-print,.test-side{display:none!important}.layout,.test-layout{display:block}.main{padding:0}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="modal-root"></div>
+
+<script>
+'use strict';
+/* =====================================================================
+   1) "BANCO DE DADOS" LOCAL
+   Estrutura igual à do Firestore da versão final:
+   settings · tables · tableState · calls
+   ===================================================================== */
+// Armazenamento seguro: se o navegador bloquear o localStorage, usa memória (só esta aba).
+function safeStorage(name) {
+  try { const st = window[name]; st.setItem('__cg', '1'); st.removeItem('__cg'); return st; }
+  catch {
+    const m = new Map();
+    return { getItem: (k) => (m.has(k) ? m.get(k) : null), setItem: (k, v) => m.set(k, String(v)), removeItem: (k) => m.delete(k) };
+  }
+}
+const LS = safeStorage('localStorage');
+const SS = safeStorage('sessionStorage');
+
+const KEY = 'chamar-garcom-local-v1';
+const MENU_KEY = 'chamar-garcom-local-menu';
+const THEMES = {
+  agua: { label: 'Azul água', brand: '#0b4f6c', brand2: '#0e6b8f', brand3: '#3aa0c4' },
+  verde: { label: 'Verde', brand: '#14532d', brand2: '#166534', brand3: '#22a35a' },
+  laranja: { label: 'Laranja', brand: '#9a3412', brand2: '#c2410c', brand3: '#f97316' },
+  vinho: { label: 'Vinho', brand: '#6b1d2a', brand2: '#8b2635', brand3: '#c0485a' },
+  grafite: { label: 'Grafite', brand: '#1f2937', brand2: '#374151', brand3: '#6b7280' },
+};
+const themeOf = () => THEMES[db.settings.theme] || THEMES.agua;
+function applyTheme() {
+  const t = themeOf(), r = document.documentElement.style;
+  r.setProperty('--brand', t.brand); r.setProperty('--brand-2', t.brand2); r.setProperty('--brand-3', t.brand3);
+  const m = document.querySelector('meta[name=theme-color]');
+  if (m) m.content = t.brand;
+}
+const VIEWED_DISPLAY_MS = 10 * 60 * 1000; // "garçom a caminho" volta a "livre" depois de 10 min
+
+const DEFAULT_DB = () => ({
+  settings: { callsEnabled: true, cooldownMinutes: 2, restaurantName: 'Toca da Tilápia', theme: 'agua', menuName: null, menuUpdatedAt: null },
+  tables: [],      // {id, number, token, active, createdAt}
+  tableState: {},  // tableId → {lastCallId, lastCallAt}
+  calls: [],       // {id, tableId, tableNumber, calledAt, viewedAt, doneAt, status}
+});
+
+function loadDb() {
+  try {
+    const raw = JSON.parse(LS.getItem(KEY));
+    if (!raw) return DEFAULT_DB();
+    const base = DEFAULT_DB();
+    const out = { ...base, ...raw, settings: { ...base.settings, ...(raw.settings || {}) } };
+    if (out.settings.restaurantName === 'Meu Restaurante') out.settings.restaurantName = base.settings.restaurantName; // dados da versão anterior
+    return out;
+  } catch { return DEFAULT_DB(); }
+}
+
+let db = loadDb();
+const listeners = new Set();
+const onChange = (fn) => listeners.add(fn);
+const emit = () => listeners.forEach((fn) => fn());
+
+/** Escrita "transacional": relê o estado mais novo, aplica, grava e avisa todo mundo. */
+function commit(mutate) {
+  db = loadDb();
+  const result = mutate(db);
+  LS.setItem(KEY, JSON.stringify(db));
+  emit();
+  return result;
+}
+
+// Tempo real entre abas/janelas do mesmo navegador
+window.addEventListener('storage', (e) => {
+  if (e.key === KEY || e.key === null) { db = loadDb(); emit(); }
+  if (e.key === MENU_KEY + ':stamp') emit();
+});
+
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+function token() {
+  const b = new Uint8Array(16);
+  crypto.getRandomValues(b);
+  return Array.from(b, (x) => x.toString(16).padStart(2, '0')).join('');
+}
+
+/* ---------- Operações (equivalem às regras do servidor) ---------- */
+const api = {
+  createTable(number) {
+    return commit((d) => {
+      if (d.tables.some((t) => t.number === number)) throw new Error(`A mesa ${number} já existe.`);
+      d.tables.push({ id: uid(), number, token: token(), active: true, createdAt: Date.now() });
+      d.tables.sort((a, b) => a.number - b.number);
+    });
+  },
+  editTable(id, number) {
+    commit((d) => {
+      if (d.tables.some((t) => t.number === number && t.id !== id)) throw new Error('Já existe uma mesa com esse número.');
+      const t = d.tables.find((x) => x.id === id); if (t) t.number = number;
+      d.tables.sort((a, b) => a.number - b.number);
+    });
+  },
+  setActive(id, active) { commit((d) => { const t = d.tables.find((x) => x.id === id); if (t) t.active = active; }); },
+  regenToken(id) { commit((d) => { const t = d.tables.find((x) => x.id === id); if (t) t.token = token(); }); },
+  deleteTable(id) {
+    commit((d) => { d.tables = d.tables.filter((t) => t.id !== id); delete d.tableState[id]; });
+  },
+
+  /** Cliente chama o garçom. Toda a validação acontece aqui (como as regras do Firestore). */
+  callWaiter(tok) {
+    return commit((d) => {
+      const t = d.tables.find((x) => x.token === tok);
+      if (!t) return { error: 'notfound' };
+      if (!t.active) return { error: 'inactive' };
+      if (!d.settings.callsEnabled) return { error: 'disabled' };
+      const st = d.tableState[t.id];
+      const now = Date.now();
+      if (st && now < st.lastCallAt + d.settings.cooldownMinutes * 60000) return { error: 'cooldown' };
+      const call = { id: uid(), tableId: t.id, tableNumber: t.number, calledAt: now, viewedAt: null, doneAt: null, status: 'PENDING' };
+      d.calls.push(call);
+      d.tableState[t.id] = { lastCallId: call.id, lastCallAt: now };
+      return { ok: true, call };
+    });
+  },
+  markViewed(callId) {
+    commit((d) => { const c = d.calls.find((x) => x.id === callId); if (c && c.status === 'PENDING') { c.status = 'VIEWED'; c.viewedAt = Date.now(); } });
+  },
+  markDone(callId) {
+    commit((d) => { const c = d.calls.find((x) => x.id === callId); if (c) { c.status = 'DONE'; c.doneAt = Date.now(); } });
+  },
+  saveSettings(patch) { commit((d) => { Object.assign(d.settings, patch); }); },
+  resetAll() { LS.removeItem(KEY); menuStore.remove(); db = DEFAULT_DB(); emit(); },
+  seedDemo() {
+    commit((d) => {
+      for (let n = 1; n <= 6; n++) if (!d.tables.some((t) => t.number === n)) d.tables.push({ id: uid(), number: n, token: token(), active: true, createdAt: Date.now() });
+      d.tables.sort((a, b) => a.number - b.number);
+    });
+  },
+};
+
+/* ---------- Cardápio (PDF) — IndexedDB, com localStorage como reserva ---------- */
+const menuStore = (() => {
+  function idb() {
+    return new Promise((res, rej) => {
+      if (!window.indexedDB) return rej(new Error('sem IndexedDB'));
+      const r = indexedDB.open('chamar-garcom-local', 1);
+      r.onupgradeneeded = () => r.result.createObjectStore('files');
+      r.onsuccess = () => res(r.result);
+      r.onerror = () => rej(r.error);
+    });
+  }
+  const stamp = () => LS.setItem(MENU_KEY + ':stamp', String(Date.now()));
+  return {
+    async save(file) {
+      try {
+        const base = await idb();
+        await new Promise((res, rej) => {
+          const tx = base.transaction('files', 'readwrite');
+          tx.objectStore('files').put(file, 'menu');
+          tx.oncomplete = res; tx.onerror = () => rej(tx.error);
+        });
+      } catch {
+        if (file.size > 3.5 * 1024 * 1024) throw new Error('Este navegador só aceita PDF de até 3,5 MB no modo local.');
+        const dataUrl = await new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.onerror = rej; fr.readAsDataURL(file); });
+        LS.setItem(MENU_KEY, dataUrl);
+      }
+      stamp();
+    },
+    async url() {
+      try {
+        const base = await idb();
+        const blob = await new Promise((res, rej) => {
+          const r = base.transaction('files').objectStore('files').get('menu');
+          r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+        });
+        if (blob) return URL.createObjectURL(blob);
+      } catch { /* cai para o localStorage */ }
+      return LS.getItem(MENU_KEY);
+    },
+    async remove() {
+      LS.removeItem(MENU_KEY);
+      try {
+        const base = await idb();
+        base.transaction('files', 'readwrite').objectStore('files').delete('menu');
+      } catch { /* ok */ }
+      stamp();
+    },
+  };
+})();
+
+/* =====================================================================
+   2) UTILITÁRIOS
+   ===================================================================== */
+const $ = (s, el = document) => el.querySelector(s);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const pad = (n) => String(n).padStart(2, '0');
+const fmtTime = (ms) => (ms ? new Date(ms).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '—');
+const fmtDateTime = (ms) => (ms ? new Date(ms).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '—');
+function fmtDur(ms) {
+  if (ms == null || isNaN(ms)) return '—';
+  const t = Math.max(0, Math.round(ms / 1000)), h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60), s = t % 60;
+  if (h) return `${h}h ${pad(m)}min`;
+  if (m) return `${m}min ${pad(s)}s`;
+  return `${s}s`;
+}
+const fmtCountdown = (ms) => { const t = Math.max(0, Math.ceil(ms / 1000)); return `${Math.floor(t / 60)}:${pad(t % 60)}`; };
+const startOfDay = (d = new Date()) => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x.getTime(); };
+const DAY = 86400000;
+const inputDate = (ms) => { const d = new Date(ms); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; };
+const parseInputDate = (s) => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d).getTime(); };
+
+const baseUrl = () => location.href.split('#')[0];
+const tableUrl = (tok) => `${baseUrl()}#mesa=${tok}`;
+
+function summarize(calls) {
+  const times = calls.filter((c) => c.viewedAt).map((c) => c.viewedAt - c.calledAt);
+  return {
+    total: calls.length,
+    attended: times.length,
+    pending: calls.filter((c) => c.status === 'PENDING').length,
+    avg: times.length ? times.reduce((a, b) => a + b, 0) / times.length : null,
+    min: times.length ? Math.min(...times) : null,
+    max: times.length ? Math.max(...times) : null,
+  };
+}
+const STATUS_LABEL = { PENDING: 'Aguardando', VIEWED: 'Garçom a caminho', DONE: 'Concluída' };
+
+function lastCallOf(tableId) {
+  const st = db.tableState[tableId];
+  return st ? db.calls.find((c) => c.id === st.lastCallId) : null;
+}
+
+function copyText(text) {
+  if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text);
+  const ta = document.createElement('textarea');
+  ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+  document.body.appendChild(ta); ta.select();
+  const ok = document.execCommand('copy'); ta.remove();
+  return ok ? Promise.resolve() : Promise.reject(new Error('copy'));
+}
+
+function download(name, content, type) {
+  const blob = content instanceof Blob ? content : new Blob([content], { type });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+let toastTimer;
+function toast(msg, error = false) {
+  let el = $('.toast');
+  if (!el) { el = document.createElement('div'); document.body.appendChild(el); }
+  el.className = 'toast' + (error ? ' error' : '');
+  el.textContent = msg;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.remove(), 3200);
+}
+
+let audioCtx;
+function beep() {
+  try {
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    const ctx = audioCtx;
+    [[880, 0, 0.25], [1175, 0.28, 0.35]].forEach(([f, s, d]) => {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.frequency.value = f;
+      g.gain.setValueAtTime(0.0001, ctx.currentTime + s);
+      g.gain.exponentialRampToValueAtTime(0.35, ctx.currentTime + s + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + s + d);
+      o.connect(g).connect(ctx.destination);
+      o.start(ctx.currentTime + s); o.stop(ctx.currentTime + s + d + 0.05);
+    });
+  } catch { /* sem áudio */ }
+}
+
+/* QR Code: biblioteca carregada sob demanda (precisa de internet só para isso). */
+let qrLib;
+function loadQr() {
+  if (window.qrcode) return Promise.resolve(window.qrcode);
+  if (qrLib) return qrLib;
+  qrLib = new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js';
+    s.onload = () => res(window.qrcode);
+    s.onerror = () => { qrLib = null; rej(new Error('offline')); };
+    document.head.appendChild(s);
+  });
+  return qrLib;
+}
+async function qrCardPng(table) {
+  const qrcode = await loadQr();
+  const qr = qrcode(0, 'M'); qr.addData(tableUrl(table.token)); qr.make();
+  const n = qr.getModuleCount();
+  const W = 720, H = 960, size = 520, cell = size / (n + 2);
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const x = c.getContext('2d');
+  x.fillStyle = '#fff'; x.fillRect(0, 0, W, H);
+  x.fillStyle = themeOf().brand; x.fillRect(0, 0, W, 190);
+  x.fillStyle = '#fbbf24'; x.fillRect(0, 190, W, 8);
+  x.textAlign = 'center';
+  x.fillStyle = 'rgba(255,255,255,.85)'; x.font = '600 30px system-ui, sans-serif'; x.fillText(db.settings.restaurantName.slice(0, 34), W / 2, 72);
+  x.fillStyle = '#fff'; x.font = '800 84px system-ui, sans-serif'; x.fillText(`MESA ${table.number}`, W / 2, 160);
+  const ox = (W - size) / 2, oy = 245;
+  x.fillStyle = '#111827';
+  for (let r = 0; r < n; r++) for (let col = 0; col < n; col++) if (qr.isDark(r, col)) x.fillRect(ox + (col + 1) * cell, oy + (r + 1) * cell, Math.ceil(cell), Math.ceil(cell));
+  x.font = '700 38px system-ui, sans-serif';
+  x.fillText('Aponte a câmera para', W / 2, 840);
+  x.fillText('chamar o garçom', W / 2, 888);
+  return c.toDataURL('image/png');
+}
+
+/* ---------- Ícones ---------- */
+const ICONS = {
+  grid: 'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z',
+  table: 'M3 7h18M5 7v12M19 7v12M8 7V4h8v3',
+  book: 'M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2zM4 5v16M8 7h7M8 11h7',
+  chart: 'M4 20V10M10 20V4M16 20v-7M22 20H2',
+  gear: 'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19 12l2-1-1-3-2 .3-1.2-1.4.4-2.1L14.3 3l-1.3 1.6h-2L9.7 3 6.8 4.8l.4 2.1L6 8.3 4 8 3 11l2 1-2 1 1 3 2-.3 1.2 1.4-.4 2.1L9.7 21l1.3-1.6h2l1.3 1.6 2.9-1.8-.4-2.1 1.2-1.4 2 .3 1-3z',
+  logout: 'M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9',
+  copy: 'M9 9h11v11H9zM5 15H4V4h11v1',
+  qr: 'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h2v2h-2zM18 14h2M14 18h2v2M18 18h2v2h-2',
+  external: 'M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5',
+  edit: 'M4 20h4L19 9l-4-4L4 16zM14 6l4 4',
+  trash: 'M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3',
+  refresh: 'M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7',
+  check: 'M5 12l5 5L20 7',
+  plus: 'M12 5v14M5 12h14',
+  download: 'M12 4v12M7 11l5 5 5-5M5 20h14',
+  upload: 'M12 20V8M7 13l5-5 5 5M5 4h14',
+  power: 'M12 3v9M6.4 6.4a8 8 0 1 0 11.2 0',
+  volume: 'M4 9v6h4l5 4V5L8 9zM16 9a4 4 0 0 1 0 6M19 6a8 8 0 0 1 0 12',
+  mute: 'M4 9v6h4l5 4V5L8 9zM17 9l5 6M22 9l-5 6',
+  phone: 'M8 3h8a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zM11 18h2',
+  print: 'M7 9V3h10v6M7 17H4v-7h16v7h-3M7 14h10v7H7z',
+};
+const ic = (n, s = 18) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink:0"><path d="${ICONS[n]}"/></svg>`;
+const LOGO = (s = 40) => `<svg width="${s}" height="${s}" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14" fill="var(--brand)"/><path d="M14 44h36" stroke="#fff" stroke-width="4" stroke-linecap="round"/><path d="M18 40a14 14 0 0 1 28 0z" fill="#fbbf24"/><circle cx="32" cy="23" r="3" fill="#fbbf24"/></svg>`;
+const BELL = (s) => `<svg width="${s}" height="${s}" viewBox="0 0 64 64" aria-hidden="true"><path d="M10 46h44" stroke="currentColor" stroke-width="4.5" stroke-linecap="round"/><path d="M15 41a17 17 0 0 1 34 0z" fill="currentColor"/><circle cx="32" cy="20" r="3.5" fill="currentColor"/></svg>`;
+
+/* =====================================================================
+   3) MODAIS
+   ===================================================================== */
+function openModal({ title, body, footer = '', wide = false }) {
+  $('#modal-root').innerHTML = `
+    <div class="modal-backdrop" data-act="modal-close-bg">
+      <div class="modal ${wide ? 'modal-wide' : ''}" role="dialog" aria-modal="true">
+        <header><h2>${esc(title)}</h2><button class="btn btn-ghost btn-sm" data-act="modal-close" aria-label="Fechar">✕</button></header>
+        <div class="modal-body">${body}</div>
+        ${footer ? `<footer>${footer}</footer>` : ''}
+      </div>
+    </div>`;
+}
+function closeModal() { $('#modal-root').innerHTML = ''; }
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
+
+async function showMenuViewer() {
+  const url = await menuStore.url();
+  if (!url) return toast('Cardápio indisponível.', true);
+  openModal({
+    title: 'Cardápio',
+    wide: true,
+    body: `<iframe class="pdf-frame" src="${url}" title="Cardápio"></iframe>`,
+    footer: `<a class="btn" href="${url}" target="_blank" rel="noopener">${ic('external', 16)} Abrir em nova aba</a><button class="btn btn-primary" data-act="modal-close">Fechar</button>`,
+  });
+}
+
+/* =====================================================================
+   4) CENTRAL DO CAIXA
+   ===================================================================== */
+const admin = {
+  page: 'painel',
+  logged: SS.getItem('cg-logged') === '1',
+  sound: LS.getItem('cg-sound') !== 'off',
+  report: { period: 'today', from: inputDate(Date.now() - 30 * DAY), to: inputDate(Date.now()) },
+  seenCalls: null,
+};
+
+const NAV = [
+  ['painel', 'Painel', 'grid'],
+  ['mesas', 'Mesas', 'table'],
+  ['cardapio', 'Cardápio', 'book'],
+  ['relatorios', 'Relatórios', 'chart'],
+  ['configuracoes', 'Configurações', 'gear'],
+];
+
+function adminShell() {
+  if (!admin.logged) {
+    return `<div class="home"><div class="login-card">
+      ${LOGO(60)}
+      <h1>${esc(db.settings.restaurantName)}</h1>
+      <p>Central do Caixa · Chamar Garçom</p>
+      <button class="btn btn-primary" data-act="login">Entrar como caixa</button>
+      <p class="login-note">Versão local de teste — na versão final este botão é “Entrar com Google”.</p>
+    </div></div>`;
+  }
+  const pending = db.calls.filter((c) => c.status === 'PENDING').length;
+  return `<div class="layout">
+    <aside class="sidebar">
+      <div class="brand">${LOGO(34)}<div><strong>Chamar Garçom</strong><span>${esc(db.settings.restaurantName)}</span></div></div>
+      <nav>${NAV.map(([id, label, icon]) => `
+        <button data-act="nav" data-page="${id}" class="${admin.page === id ? 'active' : ''}">${ic(icon)}<span class="lbl">${label}</span>
+        ${id === 'painel' && pending ? `<em class="nav-badge">${pending}</em>` : ''}</button>`).join('')}
+      </nav>
+      <div class="sidebar-foot">
+        <span class="local-tag">MODO LOCAL DE TESTE</span>
+        <button class="btn btn-sm" data-act="logout">${ic('logout', 16)} Sair</button>
+      </div>
+    </aside>
+    <main class="main" id="admin-main">${adminPage()}</main>
+  </div>`;
+}
+
+function adminPage() {
+  switch (admin.page) {
+    case 'mesas': return pageTables();
+    case 'cardapio': return pageMenu();
+    case 'relatorios': return pageReports();
+    case 'configuracoes': return pageSettings();
+    default: return pageDashboard();
+  }
+}
+
+const header = (title, sub, actions = '') =>
+  `<div class="page-header"><div><h1>${title}</h1>${sub ? `<p>${sub}</p>` : ''}</div>${actions ? `<div class="page-actions">${actions}</div>` : ''}</div>`;
+const stat = (label, value, tone = '') => `<div class="stat ${tone ? 'stat-' + tone : ''}"><span>${label}</span><strong>${value}</strong></div>`;
+
+/* ---------- Painel ---------- */
+function tableView(t, call, now) {
+  if (!t.active) return 'off';
+  if (!call) return 'free';
+  if (call.status === 'PENDING') return 'pending';
+  if (call.status === 'VIEWED' && now - call.viewedAt < VIEWED_DISPLAY_MS) return 'viewed';
+  return 'free';
+}
+
+function pageDashboard() {
+  const s = db.settings, now = Date.now(), today = startOfDay();
+  const todayCalls = db.calls.filter((c) => c.calledAt >= today);
+  const sum = summarize(todayCalls);
+  const pending = db.calls.filter((c) => c.status === 'PENDING').length;
+
+  const cards = db.tables.map((t) => {
+    const c = lastCallOf(t.id);
+    const v = tableView(t, c, now);
+    let body;
+    if (v === 'pending') {
+      body = `<div class="tcard-alert">SOLICITAÇÃO DE GARÇOM</div>
+        <div class="tcard-time">${fmtTime(c.calledAt)} · há <span data-since="${c.calledAt}">${fmtDur(now - c.calledAt)}</span></div>
+        <button class="btn tcard-btn" data-act="viewed" data-id="${c.id}">${ic('check')} VISUALIZADO</button>`;
+    } else {
+      const label = { free: 'Livre', viewed: 'Garçom a caminho', off: 'Mesa desativada' }[v];
+      body = `<div class="tcard-status">${label}</div>
+        <div class="tcard-time">${c ? 'Última chamada ' + fmtTime(c.calledAt) : 'Sem chamadas'}</div>
+        ${v === 'viewed' ? `<button class="btn btn-sm" data-act="done" data-id="${c.id}">Liberar mesa</button>` : ''}`;
+    }
+    return `<div class="tcard tcard-${v}"><div class="tcard-top"><span class="tcard-label">MESA</span><span class="dot dot-${v}"></span></div>
+      <div class="tcard-number">${t.number}</div>${body}</div>`;
+  }).join('');
+
+  return header('Painel', 'Atualiza sozinho em tempo real — sem recarregar a página.',
+      `<button class="btn btn-sm" data-act="sound">${ic(admin.sound ? 'volume' : 'mute', 16)} Som ${admin.sound ? 'ligado' : 'desligado'}</button>`) +
+    `<div class="system-status ${s.callsEnabled ? 'on' : 'off'}">
+      <span class="pulse"></span><strong>${s.callsEnabled ? 'CHAMADAS ATIVAS' : 'CHAMADAS DESATIVADAS'}</strong>
+      <span class="sub">${s.callsEnabled ? 'Os clientes podem chamar o garçom.' : 'Os clientes veem o cardápio, mas não conseguem chamar.'}</span>
+      <button class="btn btn-sm" data-act="toggle-calls">${ic('power', 16)} ${s.callsEnabled ? 'Desativar' : 'Ativar'}</button>
+    </div>
+    <div class="stats">
+      ${stat('Chamadas pendentes', pending, pending ? 'amber' : '')}
+      ${stat('Atendidas hoje', sum.attended, 'green')}
+      ${stat('Tempo médio de atendimento', fmtDur(sum.avg))}
+      ${stat('Chamadas hoje', sum.total)}
+    </div>
+    ${db.tables.length ? `<div class="tgrid">${cards}</div>` : `<div class="empty"><h3>Nenhuma mesa cadastrada</h3><p>Crie as mesas para começar.</p>
+      <div class="row" style="justify-content:center"><button class="btn btn-primary" data-act="nav" data-page="mesas">${ic('plus')} Cadastrar mesas</button>
+      <button class="btn" data-act="seed">Criar mesas 1 a 6 de exemplo</button></div></div>`}
+    <div class="legend"><span><i class="dot dot-free"></i> Livre</span><span><i class="dot dot-pending"></i> Aguardando atendimento</span><span><i class="dot dot-viewed"></i> Garçom a caminho</span><span><i class="dot dot-off"></i> Desativada</span></div>`;
+}
+
+/* ---------- Mesas ---------- */
+function pageTables() {
+  const next = db.tables.length ? Math.max(...db.tables.map((t) => t.number)) + 1 : 1;
+  const rows = db.tables.map((t) => `
+    <tr class="${t.active ? '' : 'row-off'}">
+      <td><strong class="mesa-num">${t.number}</strong></td>
+      <td><label class="switch"><input type="checkbox" data-act="table-active" data-id="${t.id}" ${t.active ? 'checked' : ''}><span></span><em>${t.active ? 'Ativa' : 'Desativada'}</em></label></td>
+      <td><code title="${esc(tableUrl(t.token))}">#mesa=${t.token.slice(0, 8)}…</code></td>
+      <td><div class="row-actions">
+        <button class="btn btn-sm" data-act="copy" data-id="${t.id}">${ic('copy', 16)} Copiar link</button>
+        <button class="btn btn-sm" data-act="qr" data-id="${t.id}">${ic('qr', 16)} QR Code</button>
+        <a class="btn btn-sm btn-ghost" href="${esc(tableUrl(t.token))}" target="_blank" title="Abrir como cliente">${ic('external', 16)}</a>
+        <button class="btn btn-sm btn-ghost" data-act="edit" data-id="${t.id}" title="Editar número">${ic('edit', 16)}</button>
+        <button class="btn btn-sm btn-ghost" data-act="regen" data-id="${t.id}" title="Gerar novo link">${ic('refresh', 16)}</button>
+        <button class="btn btn-sm btn-ghost btn-danger" data-act="delete" data-id="${t.id}" title="Excluir">${ic('trash', 16)}</button>
+      </div></td>
+    </tr>`).join('');
+
+  return header('Mesas', 'Cada mesa tem um token único e secreto — o link não usa o número da mesa.',
+      `<button class="btn btn-sm" data-act="go-test">${ic('phone', 16)} Testar lado a lado</button>`) +
+    `<div class="panel add-panel">
+      <form class="inline-form" data-form="add-table">
+        <label class="field"><span>Nova mesa</span><input class="input" name="number" type="number" min="1" placeholder="Número (ex.: ${next})"></label>
+        <button class="btn btn-primary">${ic('plus')} Criar mesa</button>
+      </form>
+      <form class="inline-form" data-form="add-range">
+        <label class="field sm"><span>Em lote: de</span><input class="input" name="from" type="number" min="1"></label>
+        <label class="field sm"><span>até</span><input class="input" name="to" type="number" min="1"></label>
+        <button class="btn">Criar mesas</button>
+      </form>
+    </div>
+    ${db.tables.length ? `<div class="panel table-wrap"><table class="data">
+      <thead><tr><th>Mesa</th><th>Situação</th><th>Link</th><th style="text-align:right">Ações</th></tr></thead>
+      <tbody>${rows}</tbody></table></div>` : `<div class="empty"><h3>Nenhuma mesa ainda</h3><p>Crie a primeira mesa acima.</p></div>`}`;
+}
+
+/* ---------- Cardápio ---------- */
+function pageMenu() {
+  const s = db.settings;
+  return header('Cardápio', 'Envie um PDF. Ele aparece no botão “VER CARDÁPIO” de todas as mesas.') +
+    `<div class="panel" style="max-width:760px">
+      <h3>Cardápio atual</h3>
+      ${s.menuName ? `<div class="menu-current"><div class="pdf-icon">PDF</div>
+          <div class="menu-meta"><strong>${esc(s.menuName)}</strong><span>Atualizado em ${fmtDateTime(s.menuUpdatedAt)}</span></div>
+          <button class="btn btn-sm" data-act="menu-view">${ic('external', 16)} Abrir</button>
+          <button class="btn btn-sm btn-danger" data-act="menu-remove">${ic('trash', 16)} Remover</button></div>`
+        : `<p class="muted" style="margin:10px 0 18px">Nenhum cardápio enviado. Os clientes verão “Cardápio indisponível”.</p>`}
+      <div class="upload-box">
+        <input id="menu-file" type="file" accept="application/pdf,.pdf" hidden>
+        <label for="menu-file" class="btn">${ic('upload')} SELECIONAR PDF</label>
+        <span class="upload-name" id="menu-file-name">Nenhum arquivo selecionado</span>
+        <button class="btn btn-primary" data-act="menu-send" id="menu-send" disabled>ENVIAR</button>
+      </div>
+      <p class="muted small" style="margin-top:12px">O arquivo fica guardado neste navegador.</p>
+    </div>`;
+}
+
+/* ---------- Relatórios ---------- */
+function reportRange() {
+  const r = admin.report, today = startOfDay();
+  if (r.period === 'yesterday') return [today - DAY, today];
+  if (r.period === '7d') return [today - 6 * DAY, today + DAY];
+  if (r.period === 'custom') return [parseInputDate(r.from), parseInputDate(r.to) + DAY];
+  return [today, today + DAY];
+}
+function reportCalls() {
+  const [a, b] = reportRange();
+  return db.calls.filter((c) => c.calledAt >= a && c.calledAt < b).sort((x, y) => y.calledAt - x.calledAt);
+}
+function pageReports() {
+  const calls = reportCalls(), s = summarize(calls), r = admin.report;
+  const periods = [['today', 'Hoje'], ['yesterday', 'Ontem'], ['7d', 'Últimos 7 dias'], ['custom', 'Período personalizado']];
+  return header('Relatórios', 'Histórico de chamadas e tempos de atendimento.',
+      `<button class="btn btn-sm" data-act="csv" ${calls.length ? '' : 'disabled'}>${ic('download', 16)} Exportar CSV</button>
+       <button class="btn btn-sm" data-act="print" ${calls.length ? '' : 'disabled'}>${ic('print', 16)} Imprimir / PDF</button>`) +
+    `<div class="panel filters no-print">
+      <div class="segmented">${periods.map(([id, l]) => `<button data-act="period" data-period="${id}" class="${r.period === id ? 'active' : ''}">${l}</button>`).join('')}</div>
+      ${r.period === 'custom' ? `<label class="field sm" style="width:160px"><span>De</span><input class="input" type="date" data-act="date-from" value="${r.from}"></label>
+        <label class="field sm" style="width:160px"><span>Até</span><input class="input" type="date" data-act="date-to" value="${r.to}"></label>` : ''}
+    </div>
+    <div class="stats stats-6">
+      ${stat('Total de chamadas', s.total)}${stat('Atendidas', s.attended, 'green')}${stat('Pendentes', s.pending, s.pending ? 'amber' : '')}
+      ${stat('Tempo médio', fmtDur(s.avg))}${stat('Menor tempo', fmtDur(s.min))}${stat('Maior tempo', fmtDur(s.max))}
+    </div>
+    <div class="panel table-wrap">${calls.length ? `<table class="data">
+      <thead><tr><th>Mesa</th><th>Horário da chamada</th><th>Visualizada em</th><th>Tempo de atendimento</th><th>Status</th></tr></thead>
+      <tbody>${calls.map((c) => `<tr><td><strong class="mesa-num">${c.tableNumber}</strong></td><td>${fmtDateTime(c.calledAt)}</td>
+        <td>${fmtDateTime(c.viewedAt)}</td><td>${c.viewedAt ? fmtDur(c.viewedAt - c.calledAt) : '—'}</td>
+        <td><span class="pill pill-${c.status}">${STATUS_LABEL[c.status]}</span></td></tr>`).join('')}</tbody></table>`
+      : `<div class="empty"><h3>Nenhuma chamada no período</h3></div>`}</div>`;
+}
+function exportCsv() {
+  const cell = (v) => { const s = String(v ?? ''); return /[;"\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
+  const dt = (ms) => (ms ? new Date(ms).toLocaleString('pt-BR') : '');
+  const lines = [['Mesa', 'Horário da chamada', 'Visualizada em', 'Tempo de atendimento', 'Tempo (segundos)', 'Status'].join(';')];
+  reportCalls().forEach((c) => lines.push([c.tableNumber, dt(c.calledAt), dt(c.viewedAt),
+    c.viewedAt ? fmtDur(c.viewedAt - c.calledAt) : '', c.viewedAt ? Math.round((c.viewedAt - c.calledAt) / 1000) : '', STATUS_LABEL[c.status]].map(cell).join(';')));
+  const [a, b] = reportRange();
+  download(`chamadas_${inputDate(a)}_a_${inputDate(b - DAY)}.csv`, '﻿' + lines.join('\r\n'), 'text/csv;charset=utf-8');
+}
+
+/* ---------- Configurações ---------- */
+function pageSettings() {
+  const s = db.settings;
+  return header('Configurações') + `<div class="settings-grid">
+    <section class="panel setting">
+      <div><h3>Sistema de chamadas</h3><p class="muted">Desligado: o cliente vê o cardápio, mas ao chamar recebe “Chamadas temporariamente indisponíveis.”</p></div>
+      <label class="switch switch-lg"><input type="checkbox" data-act="set-enabled" ${s.callsEnabled ? 'checked' : ''}><span></span><em class="${s.callsEnabled ? 'on' : 'off'}">${s.callsEnabled ? 'ON' : 'OFF'}</em></label>
+    </section>
+    <section class="panel setting setting-col">
+      <div><h3>Intervalo entre chamadas</h3><p class="muted">Tempo que cada mesa espera para chamar de novo.</p></div>
+      <form class="row" data-form="cooldown">
+        <div class="segmented">${[1, 2, 3, 5, 10].map((p) => `<button type="button" data-act="cooldown-preset" data-v="${p}" class="${s.cooldownMinutes === p ? 'active' : ''}">${p} min</button>`).join('')}</div>
+        <input class="input" name="cooldown" type="number" min="0" max="60" step="1" value="${s.cooldownMinutes}" style="width:90px"> <span class="muted">minutos</span>
+        <button class="btn btn-primary">Salvar</button>
+      </form>
+    </section>
+    <section class="panel setting setting-col">
+      <div><h3>Nome do restaurante</h3><p class="muted">Aparece na página do cliente e nos QR Codes.</p></div>
+      <form class="row" data-form="name"><input class="input" name="rname" maxlength="60" value="${esc(s.restaurantName)}" style="max-width:340px"><button class="btn btn-primary">Salvar</button></form>
+    </section>
+    <section class="panel setting setting-col">
+      <div><h3>Cor da marca</h3><p class="muted">Usada no topo da página da mesa, no botão de chamar e nos QR Codes.</p></div>
+      <div class="segmented">${Object.entries(THEMES).map(([id, t]) => `<button data-act="theme" data-theme="${id}" class="${(s.theme || 'agua') === id ? 'active' : ''}"><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${t.brand2};vertical-align:-1px;margin-right:6px"></span>${t.label}</button>`).join('')}</div>
+    </section>
+    <section class="panel setting">
+      <div><h3>Alerta sonoro</h3><p class="muted">Toca um aviso quando chega uma chamada nova.</p></div>
+      <div class="row"><button class="btn btn-sm" data-act="beep">Testar som</button>
+      <label class="switch switch-lg"><input type="checkbox" data-act="set-sound" ${admin.sound ? 'checked' : ''}><span></span><em class="${admin.sound ? 'on' : 'off'}">${admin.sound ? 'ON' : 'OFF'}</em></label></div>
+    </section>
+    <section class="panel setting">
+      <div><h3>Dados de teste</h3><p class="muted">Apaga mesas, chamadas, configurações e cardápio deste navegador.</p></div>
+      <button class="btn btn-danger" data-act="reset">${ic('trash', 16)} Zerar tudo</button>
+    </section>
+  </div>`;
+}
+
+/* =====================================================================
+   5) PÁGINA DO CLIENTE
+   ===================================================================== */
+const clientUi = { error: {} }; // erro exibido por token
+
+function clientView(tok) {
+  const t = db.tables.find((x) => x.token === tok);
+  if (!tok) return `<div class="c-shell"><div class="c-message"><h1>Link inválido</h1><p>Escaneie novamente o QR Code da sua mesa.</p></div></div>`;
+  if (!t) return `<div class="c-shell"><div class="c-message"><h1>Mesa não encontrada</h1><p>Este QR Code não é mais válido. Peça ajuda a um atendente.</p></div></div>`;
+
+  const s = db.settings, now = Date.now();
+  const call = lastCallOf(t.id);
+  const st = db.tableState[t.id];
+  const remaining = st ? st.lastCallAt + s.cooldownMinutes * 60000 - now : 0;
+  const inCooldown = remaining > 0;
+  const viewed = call && call.status === 'VIEWED' && now - call.viewedAt < VIEWED_DISPLAY_MS;
+  const pending = call && call.status === 'PENDING';
+  const enabled = s.callsEnabled && t.active;
+  const err = clientUi.error[tok];
+
+  return `<div class="c-shell">
+    <header class="c-header"><span class="c-brand">${esc(s.restaurantName)}</span><h1>CHAMAR GARÇOM</h1>
+      <div class="c-table">Mesa <strong>${t.number}</strong></div></header>
+    <main class="c-main">
+      ${viewed ? `<div class="c-status c-status-viewed" role="status"><div class="c-check">✓</div><strong>GARÇOM A CAMINHO</strong><span>O garçom chegará em breve.</span></div>` : ''}
+      ${!viewed && pending ? `<div class="c-status c-status-pending" role="status"><div class="c-ring">${BELL(32)}</div><strong>Solicitação enviada!</strong><span>Estamos chamando um garçom.</span></div>` : ''}
+      ${!t.active ? `<div class="c-alert">Esta mesa está temporariamente indisponível para chamadas.</div>`
+        : !s.callsEnabled ? `<div class="c-alert">Chamadas temporariamente indisponíveis.</div>` : ''}
+      <button class="c-call ${viewed || pending ? 'compact' : ''}" data-act="call" data-token="${tok}" ${enabled && !inCooldown ? '' : 'disabled'}>
+        ${BELL(viewed || pending ? 32 : 62)}<span>CHAMAR GARÇOM</span></button>
+      ${enabled && inCooldown ? `<p class="c-cooldown">Você poderá chamar novamente em <strong data-until="${st.lastCallAt + s.cooldownMinutes * 60000}">${fmtCountdown(remaining)}</strong></p>` : ''}
+      ${err === 'disabled' ? `<div class="c-alert">Chamadas temporariamente indisponíveis.</div>` : ''}
+      ${err === 'cooldown' ? `<div class="c-alert">Aguarde o intervalo para chamar novamente.</div>` : ''}
+      ${s.menuName ? `<button class="c-menu" data-act="menu-view">${ic('book', 22)} VER CARDÁPIO</button>`
+        : `<button class="c-menu" disabled>${ic('book', 22)} Cardápio indisponível</button>`}
+    </main>
+    <footer class="c-footer">Chamar Garçom · modo local</footer>
+  </div>`;
+}
+
+/* =====================================================================
+   6) ROTAS E RENDERIZAÇÃO
+   ===================================================================== */
+const test = { token: null };
+
+function route() {
+  const h = decodeURIComponent(location.hash.slice(1));
+  if (h.startsWith('mesa=')) return { view: 'mesa', token: h.slice(5) };
+  if (h.startsWith('admin')) return { view: 'admin', page: h.split('/')[1] };
+  if (h === 'teste') return { view: 'teste' };
+  return { view: 'home' };
+}
+
+function homeView() {
+  return `<div class="home"><div class="home-card">
+    ${LOGO(56)}
+    <h1>${esc(db.settings.restaurantName)}</h1>
+    <p class="muted" style="margin:0 0 10px">Chamar Garçom</p>
+    <span class="tag">VERSÃO LOCAL DE TESTE</span>
+    <div class="home-actions">
+      <a class="btn btn-primary" href="#teste">${ic('phone')} Testar tudo numa tela (central + celular)</a>
+      <a class="btn" href="#admin" target="_blank">Abrir central do caixa em outra aba</a>
+    </div>
+    <div class="home-steps"><strong>Como testar</strong><ol>
+      <li>Abra a central e entre como caixa.</li>
+      <li>Em <b>Mesas</b>, crie as mesas e copie o link (ou use o modo lado a lado).</li>
+      <li>Abra o link da mesa em outra aba ou janela e toque em <b>CHAMAR GARÇOM</b>.</li>
+      <li>Na central, clique em <b>VISUALIZADO</b> — o cliente muda na hora.</li>
+    </ol>
+    <p class="small" style="margin:10px 0 0">Tudo fica salvo neste navegador. Não precisa de internet nem de instalação.</p></div>
+  </div></div>`;
+}
+
+function testView() {
+  if (!db.tables.some((t) => t.token === test.token)) test.token = (db.tables.find((t) => t.active) || db.tables[0] || {}).token || null;
+  return `<div class="test-layout">
+    <div id="admin-root">${adminShell()}</div>
+    <aside class="test-side">
+      <div class="row">
+        <strong style="font-size:14px">Celular do cliente:</strong>
+        <select class="input" data-act="test-table" style="width:auto">
+          ${db.tables.length ? db.tables.map((t) => `<option value="${t.token}" ${t.token === test.token ? 'selected' : ''}>Mesa ${t.number}${t.active ? '' : ' (desativada)'}</option>`).join('') : '<option>Nenhuma mesa</option>'}
+        </select>
+      </div>
+      <div class="phone"><div class="phone-scroll" id="client-root">${test.token ? clientView(test.token)
+        : `<div class="c-shell"><div class="c-message"><h1>Sem mesas</h1><p>Crie mesas na central ao lado.</p></div></div>`}</div></div>
+      <p class="test-hint">Dica: abra também <a href="#admin" target="_blank">a central em outra aba</a> para ver a sincronização entre janelas.</p>
+    </aside>
+  </div>`;
+}
+
+function render() {
+  applyTheme();
+  const r = route();
+  closeModal();
+  if (r.view === 'admin') {
+    if (r.page && NAV.some((n) => n[0] === r.page)) admin.page = r.page;
+    document.title = 'Central do Caixa · Chamar Garçom';
+    $('#app').innerHTML = `<div id="admin-root">${adminShell()}</div>`;
+  } else if (r.view === 'mesa') {
+    document.title = 'Chamar Garçom';
+    $('#app').innerHTML = `<div id="client-root">${clientView(r.token)}</div>`;
+  } else if (r.view === 'teste') {
+    document.title = 'Teste · Chamar Garçom';
+    $('#app').innerHTML = testView();
+  } else {
+    document.title = 'Chamar Garçom · versão local';
+    $('#app').innerHTML = homeView();
+  }
+}
+
+/** Atualização em tempo real: redesenha só o que muda, sem atrapalhar quem está digitando. */
+let deferred = false;
+function refresh() {
+  applyTheme();
+  const r = route();
+  const active = document.activeElement;
+  const typing = active && /^(INPUT|SELECT|TEXTAREA)$/.test(active.tagName) && active.type !== 'checkbox' && active.closest('#admin-main');
+
+  const adminRoot = $('#admin-root');
+  if (adminRoot) {
+    const main = $('#admin-main');
+    if (typing) {
+      deferred = true;
+      const sb = $('.sidebar'); // atualiza só o contador do menu
+      if (sb) { const tmp = document.createElement('div'); tmp.innerHTML = adminShell(); const ns = tmp.querySelector('.sidebar'); if (ns) sb.replaceWith(ns); }
+    } else if (main && admin.logged) {
+      const scroll = window.scrollY;
+      adminRoot.innerHTML = adminShell();
+      window.scrollTo(0, scroll);
+      deferred = false;
+    } else {
+      adminRoot.innerHTML = adminShell();
+    }
+  }
+  if (r.view === 'teste') {
+    const sel = $('.test-side select');
+    if (sel && document.activeElement !== sel) {
+      sel.outerHTML = testView().match(/<select[\s\S]*?<\/select>/)[0];
+    }
+  }
+  const clientRoot = $('#client-root');
+  if (clientRoot) {
+    const tok = r.view === 'mesa' ? r.token : test.token;
+    clientRoot.innerHTML = tok ? clientView(tok) : `<div class="c-shell"><div class="c-message"><h1>Sem mesas</h1><p>Crie mesas na central ao lado.</p></div></div>`;
+  }
+}
+document.addEventListener('focusout', () => setTimeout(() => { if (deferred) refresh(); }, 0));
+
+/* Alerta de chamada nova (som + título da aba) */
+function checkNewCalls() {
+  const pendingIds = db.calls.filter((c) => c.status === 'PENDING').map((c) => c.id);
+  if (admin.seenCalls === null) { admin.seenCalls = new Set(db.calls.map((c) => c.id)); }
+  const fresh = pendingIds.filter((id) => !admin.seenCalls.has(id));
+  db.calls.forEach((c) => admin.seenCalls.add(c.id));
+  const isAdmin = !!$('#admin-root') && admin.logged;
+  if (isAdmin && fresh.length && admin.sound) beep();
+  if (isAdmin) document.title = pendingIds.length ? `(${pendingIds.length}) Chamada! · Chamar Garçom` : 'Central do Caixa · Chamar Garçom';
+}
+
+onChange(() => { refresh(); checkNewCalls(); });
+window.addEventListener('hashchange', render);
+
+/* Relógio da interface (só redesenha contadores — não é consulta de dados) */
+let lastFullTick = Date.now();
+setInterval(() => {
+  const now = Date.now();
+  document.querySelectorAll('[data-since]').forEach((el) => { el.textContent = fmtDur(now - Number(el.dataset.since)); });
+  let expired = false;
+  document.querySelectorAll('[data-until]').forEach((el) => {
+    const left = Number(el.dataset.until) - now;
+    if (left <= 0) expired = true; else el.textContent = fmtCountdown(left);
+  });
+  // fim do intervalo, ou "garçom a caminho" que expirou → redesenha
+  if (expired || now - lastFullTick > 20000) { lastFullTick = now; refresh(); }
+}, 1000);
+
+/* =====================================================================
+   7) AÇÕES (delegação de eventos)
+   ===================================================================== */
+const tableById = (id) => db.tables.find((t) => t.id === id);
+const parseNum = (v) => { const n = Number(String(v).trim()); return Number.isInteger(n) && n > 0 && n <= 9999 ? n : null; };
+
+function guard(fn) {
+  try { const r = fn(); if (r && r.catch) r.catch((e) => toast(e.message, true)); }
+  catch (e) { toast(e.message, true); }
+}
+
+document.addEventListener('click', (e) => {
+  const el = e.target.closest('[data-act]');
+  if (!el) return;
+  const act = el.dataset.act, id = el.dataset.id;
+
+  if (act === 'modal-close-bg' && e.target !== el) return;
+  if (el.tagName === 'INPUT' || el.tagName === 'SELECT') return; // tratados no "change"
+
+  guard(async () => {
+    switch (act) {
+      case 'modal-close': case 'modal-close-bg': closeModal(); break;
+      case 'login': admin.logged = true; SS.setItem('cg-logged', '1'); admin.seenCalls = null; checkNewCalls(); refresh(); break;
+      case 'logout': admin.logged = false; SS.removeItem('cg-logged'); refresh(); break;
+      case 'nav':
+        admin.page = el.dataset.page;
+        if (route().view === 'admin') history.replaceState(null, '', '#admin/' + admin.page);
+        deferred = false; refresh(); window.scrollTo(0, 0); break;
+      case 'go-test': location.hash = 'teste'; break;
+      case 'sound': admin.sound = !admin.sound; LS.setItem('cg-sound', admin.sound ? 'on' : 'off'); refresh(); break;
+      case 'beep': beep(); break;
+      case 'theme': api.saveSettings({ theme: el.dataset.theme }); toast('Cor atualizada'); break;
+      case 'seed': api.seedDemo(); toast('Mesas 1 a 6 criadas'); break;
+      case 'toggle-calls': api.saveSettings({ callsEnabled: !db.settings.callsEnabled }); toast(db.settings.callsEnabled ? 'Chamadas ativadas' : 'Chamadas desativadas'); break;
+      case 'viewed': api.markViewed(id); break;
+      case 'done': api.markDone(id); break;
+
+      case 'copy': {
+        const t = tableById(id);
+        await copyText(tableUrl(t.token)).then(() => toast(`Link da mesa ${t.number} copiado`), () => toast('Não foi possível copiar', true));
+        break;
+      }
+      case 'qr': {
+        const t = tableById(id);
+        openModal({
+          title: `QR Code · Mesa ${t.number}`,
+          body: `<div class="qr-box" id="qr-box"><p class="muted">Gerando…</p></div><p class="qr-url">${esc(tableUrl(t.token))}</p>`,
+          footer: `<button class="btn" data-act="copy" data-id="${t.id}">${ic('copy', 16)} Copiar link</button><button class="btn btn-primary" id="qr-dl" disabled>${ic('download', 16)} Baixar PNG</button>`,
+        });
+        try {
+          const png = await qrCardPng(t);
+          $('#qr-box').innerHTML = `<img src="${png}" alt="QR Code da mesa ${t.number}">`;
+          const dl = $('#qr-dl'); dl.disabled = false;
+          dl.onclick = () => { const a = document.createElement('a'); a.href = png; a.download = `mesa-${t.number}-qrcode.png`; a.click(); };
+        } catch {
+          $('#qr-box').innerHTML = `<p class="muted" style="text-align:center">Sem internet para gerar o QR Code.<br>O link abaixo funciona normalmente.</p>`;
+        }
+        break;
+      }
+      case 'edit': {
+        const t = tableById(id);
+        openModal({
+          title: `Editar mesa ${t.number}`,
+          body: `<form data-form="edit-table" data-id="${t.id}" id="edit-form"><label class="field"><span>Número da mesa</span><input class="input" name="number" type="number" min="1" value="${t.number}" autofocus></label></form>`,
+          footer: `<button class="btn" data-act="modal-close">Cancelar</button><button class="btn btn-primary" data-act="submit-edit">Salvar</button>`,
+        });
+        $('#edit-form input').focus();
+        break;
+      }
+      case 'submit-edit': $('#edit-form').requestSubmit(); break;
+      case 'regen': {
+        const t = tableById(id);
+        openModal({
+          title: `Gerar novo link · Mesa ${t.number}`,
+          body: `<p class="muted">O QR Code atual desta mesa para de funcionar imediatamente. Use quando um QR for fotografado indevidamente.</p>`,
+          footer: `<button class="btn" data-act="modal-close">Cancelar</button><button class="btn btn-primary" data-act="confirm-regen" data-id="${t.id}">Gerar novo link</button>`,
+        });
+        break;
+      }
+      case 'confirm-regen': api.regenToken(id); closeModal(); toast('Novo link gerado'); break;
+      case 'delete': {
+        const t = tableById(id);
+        openModal({
+          title: `Excluir mesa ${t.number}?`,
+          body: `<p class="muted">O link desta mesa deixa de funcionar. O histórico de chamadas continua nos relatórios.</p>`,
+          footer: `<button class="btn" data-act="modal-close">Cancelar</button><button class="btn btn-danger" data-act="confirm-delete" data-id="${t.id}">Excluir mesa</button>`,
+        });
+        break;
+      }
+      case 'confirm-delete': api.deleteTable(id); closeModal(); toast('Mesa excluída'); break;
+
+      case 'menu-send': {
+        const f = $('#menu-file').files[0];
+        if (!f) return;
+        if (!/pdf$/i.test(f.type) && !/\.pdf$/i.test(f.name)) throw new Error('Selecione um arquivo PDF.');
+        el.disabled = true; el.textContent = 'Enviando…';
+        await menuStore.save(f);
+        api.saveSettings({ menuName: f.name, menuUpdatedAt: Date.now() });
+        toast('Cardápio enviado! Já está disponível para todas as mesas.');
+        break;
+      }
+      case 'menu-remove': await menuStore.remove(); api.saveSettings({ menuName: null, menuUpdatedAt: Date.now() }); toast('Cardápio removido'); break;
+      case 'menu-view': await showMenuViewer(); break;
+
+      case 'period': admin.report.period = el.dataset.period; refresh(); break;
+      case 'csv': exportCsv(); break;
+      case 'print': window.print(); break;
+      case 'cooldown-preset': { const inp = el.closest('form').elements.cooldown; inp.value = el.dataset.v; break; }
+      case 'reset':
+        openModal({
+          title: 'Zerar todos os dados?',
+          body: `<p class="muted">Mesas, chamadas, configurações e cardápio deste navegador serão apagados.</p>`,
+          footer: `<button class="btn" data-act="modal-close">Cancelar</button><button class="btn btn-danger" data-act="confirm-reset">Zerar tudo</button>`,
+        });
+        break;
+      case 'confirm-reset': api.resetAll(); closeModal(); toast('Dados apagados'); break;
+
+      case 'call': {
+        const tok = el.dataset.token;
+        const r = api.callWaiter(tok);
+        clientUi.error[tok] = r.error || null;
+        if (r.error) refresh();
+        else if (navigator.vibrate) navigator.vibrate(60);
+        break;
+      }
+    }
+  });
+});
+
+document.addEventListener('change', (e) => {
+  const el = e.target;
+  const act = el.dataset.act;
+  if (el.id === 'menu-file') {
+    const f = el.files[0];
+    $('#menu-file-name').textContent = f ? `${f.name} · ${(f.size / 1024 / 1024).toFixed(1)} MB` : 'Nenhum arquivo selecionado';
+    $('#menu-send').disabled = !f;
+    return;
+  }
+  if (!act) return;
+  guard(() => {
+    if (act === 'table-active') { const t = tableById(el.dataset.id); api.setActive(t.id, el.checked); toast(`Mesa ${t.number} ${el.checked ? 'ativada' : 'desativada'}`); }
+    if (act === 'set-enabled') api.saveSettings({ callsEnabled: el.checked });
+    if (act === 'set-sound') { admin.sound = el.checked; LS.setItem('cg-sound', admin.sound ? 'on' : 'off'); refresh(); }
+    if (act === 'date-from') { admin.report.from = el.value; deferred = false; refresh(); }
+    if (act === 'date-to') { admin.report.to = el.value; deferred = false; refresh(); }
+    if (act === 'test-table') { test.token = el.value; refresh(); }
+  });
+});
+
+document.addEventListener('submit', (e) => {
+  const f = e.target.closest('[data-form]');
+  if (!f) return;
+  e.preventDefault();
+  guard(() => {
+    const form = f.dataset.form;
+    if (form === 'add-table') {
+      const next = db.tables.length ? Math.max(...db.tables.map((t) => t.number)) + 1 : 1;
+      const n = parseNum(f.elements.number.value || next);
+      if (!n) throw new Error('Informe um número de mesa válido.');
+      api.createTable(n);
+      f.elements.number.value = '';
+      f.elements.number.blur();
+      toast(`Mesa ${n} criada`);
+    }
+    if (form === 'add-range') {
+      const a = parseNum(f.elements.from.value), b = parseNum(f.elements.to.value);
+      if (!a || !b || b < a) throw new Error('Intervalo inválido.');
+      if (b - a > 99) throw new Error('Crie no máximo 100 mesas por vez.');
+      let count = 0;
+      for (let n = a; n <= b; n++) if (!db.tables.some((t) => t.number === n)) { api.createTable(n); count++; }
+      document.activeElement && document.activeElement.blur();
+      toast(count ? `${count} mesa(s) criada(s)` : 'Todas essas mesas já existem.', !count);
+    }
+    if (form === 'edit-table') {
+      const n = parseNum(f.elements.number.value);
+      if (!n) throw new Error('Número inválido.');
+      api.editTable(f.dataset.id, n);
+      closeModal(); toast('Mesa atualizada');
+    }
+    if (form === 'cooldown') {
+      const n = Number(f.elements.cooldown.value);
+      if (!Number.isInteger(n) || n < 0 || n > 60) throw new Error('Use um número inteiro entre 0 e 60.');
+      document.activeElement && document.activeElement.blur();
+      api.saveSettings({ cooldownMinutes: n });
+      toast('Intervalo salvo');
+    }
+    if (form === 'name') {
+      const v = f.elements.rname.value.trim();
+      if (!v) throw new Error('Informe o nome.');
+      document.activeElement && document.activeElement.blur();
+      api.saveSettings({ restaurantName: v });
+      toast('Nome salvo');
+    }
+  });
+});
+
+/* Início */
+checkNewCalls();
+render();
+</script>
+</body>
+</html>
